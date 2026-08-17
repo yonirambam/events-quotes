@@ -566,7 +566,10 @@ const CATEGORIES = ['מנה ראשונה','עיקרית','תוספת','קינו�
 // ═══════════════════════════════════════════════════
 // MSAL AUTH
 // ═══════════════════════════════════════════════════
-const scopes = ['https://graph.microsoft.com/Sites.ReadWrite.All', 'https://graph.microsoft.com/User.Read', 'https://graph.microsoft.com/Calendars.ReadWrite'];
+// Sites.Manage.All is required to CREATE the SharePoint lists on first run.
+// Sites.ReadWrite.All alone is NOT sufficient for list creation (only for items
+// inside existing lists) — see README for the one-time Azure consent step.
+const scopes = ['https://graph.microsoft.com/Sites.Manage.All', 'https://graph.microsoft.com/Sites.ReadWrite.All', 'https://graph.microsoft.com/User.Read', 'https://graph.microsoft.com/Calendars.ReadWrite'];
 let msalInstance = null;
 let currentUser = null;
 let accessToken = null;
@@ -684,7 +687,16 @@ async function createList(def) {
     headers:{ Authorization:`Bearer ${token}`, 'Content-Type':'application/json' },
     body: JSON.stringify({ displayName: def.displayName, columns: def.columns, list: { template:'genericList' } })
   });
-  if(!res.ok) throw new Error(`יצירת הרשימה '${def.displayName}' ב-SharePoint נכשלה: ` + await res.text());
+  if(!res.ok) {
+    const body = await res.text();
+    if(res.status === 403 || body.includes('accessDenied')) {
+      throw new Error(`אין הרשאה ליצור את הרשימה '${def.displayName}' ב-SharePoint.\n\n`+
+        `כדי ליצור רשימות חדשות נדרשת ההרשאה Sites.Manage.All ברישום האפליקציה ב-Azure, `+
+        `ובאישור מנהל (Grant admin consent). ראו את קטע ההתקנה ב-README.\n\n`+
+        `כמו כן ודאו שיש לכם הרשאת עריכה/ניהול באתר ה-SharePoint עצמו.`);
+    }
+    throw new Error(`יצירת הרשימה '${def.displayName}' ב-SharePoint נכשלה: ` + body);
+  }
   const created = await res.json();
   return created.id;
 }
