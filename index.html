@@ -180,6 +180,35 @@ label.chk input { width:auto; }
 .alert-line.info { background:var(--info-bg); color:var(--info); }
 .alert-line.notice { background:var(--surface2); color:var(--text2); }
 
+/* Kitchen bon — rows with +/- quantity control */
+.info-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:1rem; }
+.info-card { background:var(--surface2); border-radius:var(--radius-sm); padding:10px 12px; }
+.info-card .ic-label { font-size:11px; color:var(--text2); }
+.info-card .ic-val { font-size:20px; font-weight:700; color:var(--accent-text); margin-top:2px; }
+.bon-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; gap:8px; border-bottom:1px solid rgba(0,0,0,0.05); }
+.bon-row:last-child { border-bottom:none; }
+.bon-row .dish { font-size:13.5px; color:var(--text); flex:1; }
+.bon-row.edited .dish { color:var(--accent-text); font-weight:600; }
+.qty-control { display:flex; align-items:center; gap:6px; }
+.qty-btn { width:32px; height:32px; border-radius:50%; border:1px solid var(--border2); background:var(--surface);
+  color:var(--text); font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:all .12s; touch-action:manipulation; }
+.qty-btn:hover { background:var(--surface2); border-color:var(--accent); }
+.qty-val { font-size:16px; font-weight:700; min-width:30px; text-align:center; }
+.qty-val.changed { color:var(--accent); }
+.reset-btn { font-size:11px; color:var(--text3); cursor:pointer; padding:5px 8px; border-radius:4px;
+  border:1px solid transparent; flex-shrink:0; }
+.reset-btn:hover { color:var(--accent-text); border-color:var(--accent); background:var(--accent-bg); }
+.reset-btn.hidden { visibility:hidden; pointer-events:none; }
+
+/* Printed bon */
+.bon-print-head { text-align:center; border-bottom:2px solid var(--accent); padding-bottom:10px; margin-bottom:12px; }
+.bon-print-title { font-size:24px; font-weight:700; }
+.bon-print-meta { font-size:12px; color:var(--text2); margin-top:3px; }
+.bon-print-tbl { width:100%; border-collapse:collapse; }
+.bon-print-tbl td { padding:7px 12px; border-bottom:1px solid #eee; font-size:15px; }
+.bon-print-tbl td.q { text-align:left; font-size:20px; font-weight:700; width:70px; }
+
 /* Client quote — menu blocks */
 .qp-cat { margin-bottom:12px; }
 .qp-cat-name { font-size:13px; font-weight:700; color:var(--accent); border-bottom:1px solid var(--accent-bg); padding-bottom:3px; margin-bottom:5px; }
@@ -270,6 +299,7 @@ label.chk input { width:auto; }
   .form-row, .form-row3 { grid-template-columns:1fr; gap:0; }
   .inline-input { width:70px !important; }
   .fm-row { grid-template-columns:1fr; }
+  .info-grid { grid-template-columns:1fr 1fr; }
   .login-card { width:90vw; padding:32px 24px; }
 }
 </style>
@@ -389,11 +419,11 @@ label.chk input { width:auto; }
         <div id="page-menu" class="page">
           <div class="actions-bar">
             <div class="search-bar" style="width:260px"><input type="text" placeholder="חיפוש מנה..." oninput="filterMenu(this.value)"/><span class="search-icon">🔍</span></div>
-            <button class="btn" onclick="importInitialMenu()">⬆️ ייבוא התפריט של המסעדה</button>
+            <button class="btn" onclick="importInitialMenu()">⬆️ ייבוא/עדכון תפריט המסעדה</button>
             <div class="spacer"></div>
           </div>
           <div class="card"><div class="table-wrap">
-            <table><thead><tr><th>שם מנה</th><th>קטגוריה</th><th>תמחור</th><th>הודעה מוקדמת</th><th>הערות</th><th style="width:60px">פעיל</th><th style="width:110px">פעולות</th></tr></thead>
+            <table><thead><tr><th>שם מנה</th><th>קטגוריה</th><th>תמחור</th><th>הודעה מוקדמת</th><th>בון מטבח</th><th style="width:60px">פעיל</th><th style="width:110px">פעולות</th></tr></thead>
             <tbody id="menu-body"></tbody></table>
           </div></div>
         </div>
@@ -474,19 +504,30 @@ label.chk input { width:auto; }
   </div>
 </div>
 
-<!-- FINAL MENU / KITCHEN TICKET MODAL -->
+<!-- KITCHEN BON MODAL -->
 <div class="modal-overlay" id="finalmenu-modal">
   <div class="modal">
-    <div class="modal-header"><h2 id="fm-title">תפריט סופי לאירוע</h2><button class="modal-close" onclick="closeModal('finalmenu-modal')">✕</button></div>
+    <div class="modal-header"><h2 id="fm-title">בון מטבח</h2><button class="modal-close" onclick="closeModal('finalmenu-modal')">✕</button></div>
     <div class="modal-body">
-      <div class="qk-hero" id="fm-hero" style="margin-top:0"></div>
-      <div id="fm-categories"></div>
-      <div class="form-group" style="margin-top:14px"><label>הערות כלליות למטבח (אלרגיות, בקשות מיוחדות...)</label><textarea id="fm-kitchen-notes"></textarea></div>
+      <div class="form-row3">
+        <div class="form-group"><label>מספר סועדים סופי</label><input type="number" id="fm-guests" min="1" oninput="renderBon()"/></div>
+        <div class="form-group"><label>מתוכם צמחוניים</label><input type="number" id="fm-vegans" min="0" value="0" oninput="renderBon()"/></div>
+        <div class="form-group"><label>&nbsp;</label><div style="font-size:11px;color:var(--text3);padding-top:9px">הכמויות מתחשבות בצמחוניים אוטומטית</div></div>
+      </div>
+      <div id="fm-alerts"></div>
+      <div id="fm-bon"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px">
+        <span style="font-size:13px;font-weight:600">שורות נוספות</span>
+        <button class="btn btn-sm" onclick="addBonExtra()">+ הוסף שורה</button>
+      </div>
+      <div id="fm-extras"></div>
+      <div class="form-group" style="margin-top:14px"><label>הערות למטבח (אלרגיות, בקשות מיוחדות...)</label><textarea id="fm-kitchen-notes" oninput="renderBon()"></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('finalmenu-modal')">ביטול</button>
-      <button class="btn" onclick="saveFinalMenu(false)">💾 שמור תפריט סופי</button>
-      <button class="btn btn-kitchen" onclick="saveFinalMenu(true)">🖨️ שמור והדפס בון למטבח</button>
+      <button class="btn" onclick="copyBonText()">📋 העתק כטקסט</button>
+      <button class="btn" onclick="saveBon(false)">💾 שמור</button>
+      <button class="btn btn-kitchen" onclick="saveBon(true)">🖨️ שמור והדפס בון</button>
     </div>
   </div>
 </div>
@@ -540,6 +581,38 @@ label.chk input { width:auto; }
       <div class="form-group"><label>הערות</label><input type="text" id="mm-notes"/></div>
       <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="mm-grill"/> נחשב לאחת מבחירות הגריל (4 הסוגים)</label>
       <label class="chk"><input type="checkbox" id="mm-active" checked/> מנה פעילה (זמינה לבחירה)</label>
+
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">הגדרות בון מטבח</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">קובעות אם המנה מופיעה בבון, באיזה גל הגשה, ואיך מחושבת הכמות. מנה בלי אף פייר לא תופיע בבון.</div>
+        <div class="form-group"><label>פיירים (גלי הגשה) — אפשר לסמן יותר מאחד</label>
+          <div id="mm-waves"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>שם המנה בבון (יחידת מטבח)</label><input type="text" id="mm-bonunit" placeholder="לדוגמה: חצי שווארמה"/></div>
+          <div class="form-group"><label>אופן חישוב הכמות</label>
+            <select id="mm-bonmode" onchange="onBonModeChange()">
+              <option value="perGuest">מקדם × מספר סועדים</option>
+              <option value="splitMeat">חלוקת שיפודים בין הסוגים</option>
+              <option value="perVegan">לפי מספר הצמחוניים</option>
+              <option value="asOrdered">לפי הכמות שהוזמנה בהצעה</option>
+              <option value="fixed">כמות קבועה</option>
+            </select>
+          </div>
+        </div>
+        <div id="mm-factor-wrap">
+          <div class="form-row3">
+            <div class="form-group"><label id="mm-factor-label">מקדם לסועד</label><input type="number" id="mm-bonfactor" step="0.01" min="0" value="0"/></div>
+            <div class="form-group"><label>עיגול</label>
+              <select id="mm-bonround"><option value="round">רגיל</option><option value="up">למעלה</option></select>
+            </div>
+            <div class="form-group"><label>מקדם חלופי</label><input type="number" id="mm-bonfactoralt" step="0.01" min="0" value="0"/></div>
+          </div>
+          <div class="form-group"><label>המקדם החלופי יחול כאשר נבחרת המנה</label>
+            <select id="mm-bonaltwhen"><option value="">— ללא —</option></select>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('menuitem-modal')">ביטול</button>
@@ -614,13 +687,20 @@ const LIST_DEFS = {
     {name:'Status',text:{}}, {name:'Notes',text:{allowMultipleLines:true}},
     {name:'FinalMenuJson',text:{allowMultipleLines:true}},
     {name:'KitchenNotes',text:{allowMultipleLines:true}},
-    {name:'FinalMenuConfirmed',boolean:{}}
+    {name:'FinalMenuConfirmed',boolean:{}},
+    {name:'Vegans',number:{decimalPlaces:'none'}},
+    {name:'FinalGuests',number:{decimalPlaces:'none'}},
+    {name:'BonOverridesJson',text:{allowMultipleLines:true}},
+    {name:'BonExtrasJson',text:{allowMultipleLines:true}}
   ]},
   menu: { displayName:'תפריט אירועים', columns:[
     {name:'Category',text:{}}, {name:'Active',boolean:{}}, {name:'Notes',text:{}},
     {name:'Kind',text:{}}, {name:'Price',number:{}},
     {name:'NoticeDays',number:{decimalPlaces:'none'}}, {name:'IsGrillChoice',boolean:{}},
-    {name:'SortOrder',number:{decimalPlaces:'none'}}
+    {name:'SortOrder',number:{decimalPlaces:'none'}},
+    {name:'BonWaves',text:{}}, {name:'BonUnit',text:{}}, {name:'BonMode',text:{}},
+    {name:'BonFactor',number:{}}, {name:'BonRound',text:{}},
+    {name:'BonFactorAlt',number:{}}, {name:'BonAltWhen',text:{}}
   ]},
   reminders: { displayName:'תזכורות אירועים', columns:[
     {name:'CustId',text:{}}, {name:'CustName',text:{}},
@@ -642,6 +722,21 @@ const HEADCOUNT_DEADLINE_HOURS = 3; // עדכון מספר סועדים סופי
 
 // קטגוריות התפריט, בסדר ההגשה
 const CATEGORIES = ['פתיחת שולחן','ראשונות','שווארמה','גריל','שתייה','תוספות אפשריות'];
+
+// ── בון מטבח: גלי ההגשה ("פיירים") ──
+const W1 = 'פייר ראשון — פתיחים';
+const W2 = 'פייר שני — שווארמה וראשונות';
+const W3 = 'פייר שלישי — עיקריות';
+const WAVES = [W1, W2, W3];
+
+// אופן חישוב הכמות לבון, לכל מנה
+const BON_MODES = {
+  perGuest:  { label:'מקדם × מספר סועדים' },   // round/ceil(guests × factor)
+  splitMeat: { label:'חלוקת שיפודים בין הסוגים' }, // (סועדים − צמחוניים) מחולק בין הסוגים הנבחרים
+  perVegan:  { label:'לפי מספר הצמחוניים' },
+  asOrdered: { label:'לפי הכמות שהוזמנה בהצעה' },
+  fixed:     { label:'כמות קבועה' },
+};
 
 // סוגי תמחור לפריט
 //   included  = כלול במחיר הבסיס
@@ -665,38 +760,58 @@ const TERMS = [
   'כל שדרוג מחייב תוספת תשלום לכל אחד ממספר הסועדים.',
 ];
 
-// תפריט הבסיס לייבוא ראשוני (לפי הצעת המחיר של המסעדה)
+// תפריט הבסיס לייבוא ראשוני (לפי הצעת המחיר של המסעדה),
+// כולל הגדרות הבון למטבח: באיזה פייר המנה יוצאת, שם יחידת המטבח, ואיך מחושבת הכמות.
+//   bonWaves    — באילו גלי הגשה המנה מופיעה (מנה יכולה להופיע ביותר מאחד)
+//   bonUnit     — שם המנה כפי שהמטבח מכיר אותה ("חצי שווארמה"), וגם מפתח מיזוג:
+//                 כמה פריטי תפריט עם אותו bonUnit מתמזגים לשורה אחת בבון
+//   bonFactor   — מקדם לסועד; bonFactorAlt/bonAltWhen — מקדם חלופי כשפריט אחר נבחר
+//   bonRound    — 'round' עיגול רגיל, 'up' עיגול למעלה
 const INITIAL_MENU = [
-  {name:'חמוצים',category:'פתיחת שולחן',kind:'included'},
-  {name:'טחינה',category:'פתיחת שולחן',kind:'included'},
-  {name:'עמבה',category:'פתיחת שולחן',kind:'included'},
-  {name:"צ'זיקי",category:'פתיחת שולחן',kind:'included'},
-  {name:'חריפים',category:'פתיחת שולחן',kind:'included'},
-  {name:'פיתות',category:'פתיחת שולחן',kind:'included'},
+  // פתיחת שולחן — כל הפריטים מתמזגים לשורת "פתיחים" אחת: ceil(סועדים ÷ 4)
+  {name:'חמוצים',category:'פתיחת שולחן',kind:'included',bonWaves:[W1],bonUnit:'פתיחים',bonMode:'perGuest',bonFactor:0.25,bonRound:'up'},
+  {name:'טחינה',category:'פתיחת שולחן',kind:'included',bonWaves:[W1],bonUnit:'פתיחים',bonMode:'perGuest',bonFactor:0.25,bonRound:'up'},
+  {name:'עמבה',category:'פתיחת שולחן',kind:'included',bonWaves:[W1],bonUnit:'פתיחים',bonMode:'perGuest',bonFactor:0.25,bonRound:'up'},
+  {name:"צ'זיקי",category:'פתיחת שולחן',kind:'included',bonWaves:[W1],bonUnit:'פתיחים',bonMode:'perGuest',bonFactor:0.25,bonRound:'up'},
+  {name:'חריפים',category:'פתיחת שולחן',kind:'included',bonWaves:[W1],bonUnit:'פתיחים',bonMode:'perGuest',bonFactor:0.25,bonRound:'up'},
+  {name:'פיתות',category:'פתיחת שולחן',kind:'included',bonWaves:[W1],bonUnit:'פתיחים',bonMode:'perGuest',bonFactor:0.25,bonRound:'up'},
 
-  {name:'סלט עשבים – פרי עונתי – שקדים – יוגורט',category:'ראשונות',kind:'included',notes:'ניתן ללא יוגורט'},
-  {name:'סלט יווני',category:'ראשונות',kind:'included'},
-  {name:'כרובית בטחינה עם שום קונפי וסלסת עגבניות',category:'ראשונות',kind:'included'},
-  {name:'רוסטביף שייטל',category:'ראשונות',kind:'perPerson',price:10},
+  // ראשונות — הסלטים יורדים מ-0.33 ל-0.25 כשנבחר רוסטביף
+  {name:'סלט עשבים – פרי עונתי – שקדים – יוגורט',category:'ראשונות',kind:'included',notes:'ניתן ללא יוגורט',
+   bonWaves:[W2],bonUnit:'סלט עשבים',bonMode:'perGuest',bonFactor:0.33,bonFactorAlt:0.25,bonAltWhen:'רוסטביף שייטל'},
+  {name:'סלט יווני',category:'ראשונות',kind:'included',
+   bonWaves:[W2],bonUnit:'חצי סלט יווני',bonMode:'perGuest',bonFactor:0.33,bonFactorAlt:0.25,bonAltWhen:'רוסטביף שייטל'},
+  {name:'כרובית בטחינה עם שום קונפי וסלסת עגבניות',category:'ראשונות',kind:'included',
+   bonWaves:[W2],bonUnit:'חצי כרובית',bonMode:'perGuest',bonFactor:0.33,bonFactorAlt:0.25,bonAltWhen:'רוסטביף שייטל'},
+  {name:'רוסטביף שייטל',category:'ראשונות',kind:'perPerson',price:10,
+   bonWaves:[W2],bonUnit:'חצי רוסטביף',bonMode:'perGuest',bonFactor:0.25},
 
-  {name:"צלחות שווארמה עם צ'יפס",category:'שווארמה',kind:'included',notes:'בהתאם למספר הסועדים'},
+  // שווארמה — יוצאת פעמיים: בפייר השני ובפייר השלישי
+  {name:"צלחות שווארמה עם צ'יפס",category:'שווארמה',kind:'included',notes:'בהתאם למספר הסועדים',
+   bonWaves:[W2,W3],bonUnit:'חצי שווארמה',bonMode:'perGuest',bonFactor:0.4},
 
-  {name:'שיפוד קבב',category:'גריל',kind:'included',grill:true},
-  {name:'שיפוד פרגית',category:'גריל',kind:'included',grill:true},
-  {name:'שיפוד כבד עוף',category:'גריל',kind:'included',grill:true},
-  {name:'שיפוד צמחוני',category:'גריל',kind:'included',grill:true,notes:'במידה ונדרש'},
-  {name:'שיפוד חלקי פנים טלה',category:'גריל',kind:'included',grill:true,noticeDays:2},
-  {name:'שיפוד בקר',category:'גריל',kind:'perPerson',price:8,grill:true},
-  {name:'שיפוד צוואר חזיר',category:'גריל',kind:'perPerson',price:8,grill:true,noticeDays:2},
-  {name:'צלעות טלה',category:'גריל',kind:'perUnit',price:75,noticeDays:2},
-  {name:'שיפוד שקדי עגל',category:'גריל',kind:'perUnit',price:85,noticeDays:2},
-  {name:'סטייקים למרכז שולחן',category:'גריל',kind:'perUnit',price:0,noticeDays:2,notes:'מחיר נקבע ע״פ סוג הנתח'},
+  // גריל — השיפודים מתחלקים בין הסוגים שנבחרו
+  {name:'שיפוד קבב',category:'גריל',kind:'included',grill:true,bonWaves:[W3],bonUnit:'קבב',bonMode:'splitMeat'},
+  {name:'שיפוד פרגית',category:'גריל',kind:'included',grill:true,bonWaves:[W3],bonUnit:'פרגית',bonMode:'splitMeat'},
+  {name:'שיפוד כבד עוף',category:'גריל',kind:'included',grill:true,bonWaves:[W3],bonUnit:'כבד עוף',bonMode:'splitMeat'},
+  {name:'שיפוד חלקי פנים טלה',category:'גריל',kind:'included',grill:true,noticeDays:2,bonWaves:[W3],bonUnit:'חלקי פנים',bonMode:'splitMeat'},
+  {name:'שיפוד בקר',category:'גריל',kind:'perPerson',price:8,grill:true,bonWaves:[W3],bonUnit:'בקר',bonMode:'splitMeat'},
+  {name:'שיפוד צוואר חזיר',category:'גריל',kind:'perPerson',price:8,grill:true,noticeDays:2,bonWaves:[W3],bonUnit:'צוואר חזיר',bonMode:'splitMeat'},
+  // הצמחוני נגזר אוטומטית ממספר הצמחוניים — ולכן אינו תופס אחת מבחירות הגריל
+  {name:'שיפוד צמחוני',category:'גריל',kind:'included',notes:'לפי מספר הצמחוניים',
+   bonWaves:[W3],bonUnit:'שיפוד צמחוני',bonMode:'perVegan'},
+  {name:'צלעות טלה',category:'גריל',kind:'perUnit',price:75,noticeDays:2,bonWaves:[W3],bonUnit:'צלעות טלה',bonMode:'asOrdered'},
+  {name:'שיפוד שקדי עגל',category:'גריל',kind:'perUnit',price:85,noticeDays:2,bonWaves:[W3],bonUnit:'שקדי עגל',bonMode:'asOrdered'},
+  {name:'סטייקים למרכז שולחן',category:'גריל',kind:'perUnit',price:0,noticeDays:2,notes:'מחיר נקבע ע״פ סוג הנתח',
+   bonWaves:[W3],bonUnit:'סטייקים למרכז שולחן',bonMode:'asOrdered'},
 
+  // שתייה — לא מופיעה בבון המטבח
   {name:'מים גדול זכוכית',category:'שתייה',kind:'included'},
   {name:'מוגז עדין גדול זכוכית',category:'שתייה',kind:'included'},
 
-  {name:'יין הבית, בירה סן מיגל מהחבית, אוזו ברביאני',category:'תוספות אפשריות',kind:'perPerson',price:40},
-  {name:'יין הבית, בירה סן מיגל מהחבית, אוזו, ערק, וודקה, קמפרי, ויסקי, טקילה וקוניאק',category:'תוספות אפשריות',kind:'perPerson',price:60},
+  // חבילות אלכוהול — bonUnit משמש כתווית מסלול השתייה בכרטיס שבראש הבון
+  {name:'יין הבית, בירה סן מיגל מהחבית, אוזו ברביאני',category:'תוספות אפשריות',kind:'perPerson',price:40,bonUnit:'מורחב'},
+  {name:'יין הבית, בירה סן מיגל מהחבית, אוזו, ערק, וודקה, קמפרי, ויסקי, טקילה וקוניאק',category:'תוספות אפשריות',kind:'perPerson',price:60,bonUnit:'פרימיום'},
 ];
 
 // ═══════════════════════════════════════════════════
@@ -871,12 +986,25 @@ function spToMenuItem(f) {
   return { _spId:f._spId, name:f.Title||'', category:f.Category||'ראשונות',
     active:(f.Active!==false), notes:f.Notes||'',
     kind:f.Kind||'included', price:f.Price||0,
-    noticeDays:f.NoticeDays||0, grill:!!f.IsGrillChoice, sort:f.SortOrder||0 };
+    noticeDays:f.NoticeDays||0, grill:!!f.IsGrillChoice, sort:f.SortOrder||0,
+    bonWaves:(f.BonWaves||'').split('|').filter(Boolean), bonUnit:f.BonUnit||'',
+    bonMode:f.BonMode||'perGuest', bonFactor:(f.BonFactor!=null?f.BonFactor:0),
+    bonRound:f.BonRound||'round', bonFactorAlt:(f.BonFactorAlt!=null?f.BonFactorAlt:0),
+    bonAltWhen:f.BonAltWhen||'' };
 }
 function menuItemToSp(m) {
   return { Title:m.name, Category:m.category||'ראשונות', Active:(m.active!==false), Notes:m.notes||'',
     Kind:m.kind||'included', Price:m.price||0,
-    NoticeDays:m.noticeDays||0, IsGrillChoice:!!m.grill, SortOrder:m.sort||0 };
+    NoticeDays:m.noticeDays||0, IsGrillChoice:!!m.grill, SortOrder:m.sort||0,
+    BonWaves:(m.bonWaves||[]).join('|'), BonUnit:m.bonUnit||'',
+    BonMode:m.bonMode||'perGuest', BonFactor:m.bonFactor||0,
+    BonRound:m.bonRound||'round', BonFactorAlt:m.bonFactorAlt||0, BonAltWhen:m.bonAltWhen||'' };
+}
+// רק שדות הבון — לעדכון פריטים קיימים בלי לדרוך על מחירים שהמשתמש שינה
+function menuBonFieldsToSp(m) {
+  return { BonWaves:(m.bonWaves||[]).join('|'), BonUnit:m.bonUnit||'',
+    BonMode:m.bonMode||'perGuest', BonFactor:m.bonFactor||0,
+    BonRound:m.bonRound||'round', BonFactorAlt:m.bonFactorAlt||0, BonAltWhen:m.bonAltWhen||'' };
 }
 
 function spToQuote(f) {
@@ -890,7 +1018,10 @@ function spToQuote(f) {
     selections, addons, subtotal:f.Subtotal||0, discountPct:f.DiscountPct||0,
     servicePct:(f.ServicePct!=null?f.ServicePct:SERVICE_PCT_DEFAULT), total:f.Total||0,
     status:f.Status||'הצעה נשלחה', notes:f.Notes||'', finalMenu, kitchenNotes:f.KitchenNotes||'',
-    finalMenuConfirmed: !!f.FinalMenuConfirmed };
+    finalMenuConfirmed: !!f.FinalMenuConfirmed,
+    vegans:f.Vegans||0, finalGuests:(f.FinalGuests||0),
+    bonOverrides:(function(){try{return JSON.parse(f.BonOverridesJson||'{}');}catch(e){return {};}})(),
+    bonExtras:(function(){try{return JSON.parse(f.BonExtrasJson||'[]');}catch(e){return [];}})() };
 }
 function quoteToSp(q) {
   return { Title:q.customerName||'', CustId:String(q.customerId||''), CustName:q.customerName||'',
@@ -900,7 +1031,9 @@ function quoteToSp(q) {
     Subtotal:q.subtotal||0, DiscountPct:q.discountPct||0, ServicePct:q.servicePct||0,
     Total:q.total||0, Status:q.status||'הצעה נשלחה',
     Notes:q.notes||'', FinalMenuJson:JSON.stringify(q.finalMenu||[]), KitchenNotes:q.kitchenNotes||'',
-    FinalMenuConfirmed: !!q.finalMenuConfirmed };
+    FinalMenuConfirmed: !!q.finalMenuConfirmed,
+    Vegans:q.vegans||0, FinalGuests:q.finalGuests||0,
+    BonOverridesJson:JSON.stringify(q.bonOverrides||{}), BonExtrasJson:JSON.stringify(q.bonExtras||[]) };
 }
 
 // ═══════════════════════════════════════════════════
@@ -927,6 +1060,92 @@ function priceQuote(q) {
   return { guests, base, perPersonRate, upgrades, perUnit, other, subtotal,
     discountAmt, afterDiscount, serviceAmt, total,
     perGuest: guests > 0 ? total / guests : 0 };
+}
+
+// ═══════════════════════════════════════════════════
+// BON ENGINE — חישוב הכמויות למטבח
+//   מקבל הצעה + מספר סועדים סופי + מספר צמחוניים,
+//   ומחזיר את שורות הבון מקובצות לפי פייר.
+// ═══════════════════════════════════════════════════
+function bonGuests(q){ return (q.finalGuests && q.finalGuests > 0) ? q.finalGuests : (q.guests || 0); }
+
+function computeBon(q, guestsOverride, vegansOverride) {
+  const n   = guestsOverride != null ? guestsOverride : bonGuests(q);
+  const veg = vegansOverride != null ? vegansOverride : (q.vegans || 0);
+  const sel = (q.selections || []).filter(s => s.qty > 0);
+  const selNames = new Set(sel.map(s => s.name));
+
+  // הגדרות הבון נלקחות מקטלוג התפריט העדכני, ואם הפריט נמחק — מהתצלום שבהצעה
+  const cfgOf = s => { const m = findMenu(s.name); return m || s; };
+
+  // חלוקת השיפודים: (סועדים − צמחוניים) מתחלק שווה בין הסוגים שנבחרו,
+  // והשארית מתחלקת אחת-אחת לסוגים הראשונים
+  const meatSel = sel.filter(s => (cfgOf(s).bonMode === 'splitMeat'));
+  const meatQty = {};
+  if (meatSel.length) {
+    const eaters = Math.max(n - veg, 0) || n;
+    const base = Math.floor(eaters / meatSel.length);
+    let rem = eaters - base * meatSel.length;
+    meatSel.forEach((s, i) => { meatQty[s.name] = Math.max(base + (i < rem ? 1 : 0), 1); });
+  }
+
+  const rows = [];
+  const seen = new Map(); // מיזוג לפי פייר + שם יחידת מטבח
+
+  sel.forEach(s => {
+    const c = cfgOf(s);
+    const waves = (c.bonWaves && c.bonWaves.length) ? c.bonWaves : [];
+    if (!waves.length) return;               // פריט שאינו מופיע בבון
+    const unit = c.bonUnit || s.name;
+    const mode = c.bonMode || 'perGuest';
+
+    let qty = 0;
+    if (mode === 'perGuest') {
+      let f = c.bonFactor || 0;
+      if (c.bonFactorAlt > 0 && c.bonAltWhen && selNames.has(c.bonAltWhen)) f = c.bonFactorAlt;
+      qty = (c.bonRound === 'up') ? Math.ceil(n * f) : Math.round(n * f);
+    } else if (mode === 'splitMeat') {
+      qty = meatQty[s.name] || 0;
+    } else if (mode === 'perVegan') {
+      qty = veg;
+    } else if (mode === 'asOrdered') {
+      qty = s.qty || 0;
+    } else if (mode === 'fixed') {
+      qty = c.bonFactor || 0;
+    }
+    if (qty <= 0) return;                    // אין מה להכין
+
+    waves.forEach(w => {
+      const key = w + '||' + unit;
+      if (seen.has(key)) return;             // מנות שמתמזגות לשורה אחת (למשל כל הפתיחים)
+      const row = { id: 'r_' + rows.length + '_' + encodeURIComponent(unit), wave:w, unit, qty, auto:qty, mode };
+      seen.set(key, row);
+      rows.push(row);
+    });
+  });
+
+  // שורות שהוספו ידנית לבון
+  (q.bonExtras || []).forEach((e, i) => {
+    if (!e.unit) return;
+    rows.push({ id:'x_'+i, wave:e.wave || W3, unit:e.unit, qty:e.qty||0, auto:e.qty||0, mode:'extra', extra:true });
+  });
+
+  // כוונונים ידניים
+  const ov = q.bonOverrides || {};
+  rows.forEach(r => { if (ov[r.id] != null) r.qty = ov[r.id]; });
+
+  // תווית מסלול השתייה, מתוך חבילות האלכוהול שנבחרו
+  const drinkSel = sel.filter(s => s.category === 'תוספות אפשריות' && s.kind === 'perPerson');
+  const drinksLabel = drinkSel.length
+    ? drinkSel.map(s => (findMenu(s.name)||s).bonUnit || s.name).join(' + ')
+    : 'בסיסי';
+  const drinksExtra = drinkSel.reduce((a,s)=>a+(s.price||0),0);
+
+  const byWave = WAVES.map(w => ({ wave:w, rows:rows.filter(r=>r.wave===w) })).filter(g=>g.rows.length);
+  const noticeList = sel.filter(s => ((findMenu(s.name)||s).noticeDays||0) > 0).map(s=>s.name);
+
+  return { n, veg, rows, byWave, drinksLabel, drinksExtra, noticeList,
+    perGuestPrice: priceQuote({...q, guests:n}).perGuest };
 }
 
 // ═══════════════════════════════════════════════════
@@ -958,7 +1177,7 @@ function reminderToSp(r) {
 let customers=[], MENU=[], quotes=[], reminders=[];
 let editingQuoteId=null, editingCustId=null, editingMenuId=null;
 let qmAddons=[], qmSel={};
-let fmQuoteId=null, fmItems=[];
+let fmQuoteId=null, fmOverrides={}, fmExtras=[], fmLastBon={rows:[],byWave:[]};
 let currentPage='dashboard';
 
 // ═══════════════════════════════════════════════════
@@ -1161,6 +1380,17 @@ function renderMenu(list) {
     if(m.kind==='perUnit')   return `<span class="badge badge-blue">${m.price>0?'₪'+m.price:'לפי נתח'} ליח'</span>`;
     return `<span class="badge badge-green">כלול</span>`;
   };
+  const bonCellHtml=m=>{
+    if(!m.bonWaves || !m.bonWaves.length) return '<span style="color:var(--text3)">לא בבון</span>';
+    const waveNums=m.bonWaves.map(w=>WAVES.indexOf(w)+1).filter(n=>n>0).join(',');
+    let how='';
+    if(m.bonMode==='perGuest')  how=`×${m.bonFactor}${m.bonRound==='up'?' ↑':''}${m.bonFactorAlt>0?` (או ×${m.bonFactorAlt})`:''}`;
+    else if(m.bonMode==='splitMeat') how='חלוקת שיפודים';
+    else if(m.bonMode==='perVegan')  how='לפי צמחוניים';
+    else if(m.bonMode==='asOrdered') how='לפי ההזמנה';
+    else if(m.bonMode==='fixed')     how=`קבוע ${m.bonFactor}`;
+    return `<span class="badge badge-gray">פייר ${waveNums}</span> <strong style="font-size:12px">${esc(m.bonUnit||m.name)}</strong> <span style="font-size:11px;color:var(--text2)">${how}</span>`;
+  };
   const sorted=[...list].sort((a,b)=>{
     const ci=CATEGORIES.indexOf(a.category)-CATEGORIES.indexOf(b.category);
     return ci!==0?ci:(a.sort||0)-(b.sort||0);
@@ -1170,32 +1400,47 @@ function renderMenu(list) {
     <td data-label="קטגוריה">${m.category}</td>
     <td data-label="תמחור">${kindBadge(m)}</td>
     <td data-label="הודעה מוקדמת">${m.noticeDays>0?`⏱ ${m.noticeDays} ימים`:'—'}</td>
-    <td data-label="הערות">${esc(m.notes||'—')}</td>
+    <td data-label="בון מטבח">${bonCellHtml(m)}</td>
     <td data-label="פעיל">${m.active?'✅':'—'}</td>
     <td data-label="פעולות"><button class="btn btn-sm" onclick="editMenuItem('${m._spId}')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteMenuItem('${m._spId}')" style="margin-right:4px">🗑</button></td>
   </tr>`).join('')||`<tr><td colspan="7" class="empty-state">התפריט ריק. לחצו על "ייבוא התפריט של המסעדה" כדי לטעון את התפריט המלא בלחיצה אחת.</td></tr>`;
 }
 
-// ייבוא חד-פעמי של תפריט הבסיס מתוך הצעת המחיר של המסעדה
+// ייבוא/עדכון תפריט הבסיס מתוך הצעת המחיר של המסעדה.
+// פריט שאינו קיים — נוסף במלואו. פריט שקיים — מתעדכנות אצלו רק הגדרות
+// הבון, כדי לא לדרוך על מחירים או שמות שהמשתמש שינה בעצמו.
 async function importInitialMenu(){
-  if(MENU.length && !confirm(`בתפריט קיימות כבר ${MENU.length} מנות.\nהייבוא יוסיף את מנות הבסיס ויכול ליצור כפילויות.\n\nלהמשיך?`)) return;
-  const existing=new Set(MENU.map(m=>m.name));
-  const toAdd=INITIAL_MENU.filter(m=>!existing.has(m.name));
-  if(!toAdd.length){ alert('כל מנות הבסיס כבר קיימות בתפריט.'); return; }
+  const byName = new Map(MENU.map(m=>[m.name,m]));
+  const toAdd    = INITIAL_MENU.filter(m=>!byName.has(m.name));
+  const toUpdate = INITIAL_MENU.filter(m=>byName.has(m.name));
+  if(!toAdd.length && !toUpdate.length){ alert('אין מה לייבא.'); return; }
+  const msg = `ייבוא תפריט המסעדה:\n\n· ${toAdd.length} מנות חדשות יתווספו\n· ${toUpdate.length} מנות קיימות יקבלו את הגדרות הבון (פייר, יחידת מטבח, מקדם)\n\nמחירים ושמות שערכתם בעצמכם לא ישתנו. להמשיך?`;
+  if(!confirm(msg)) return;
   setSyncing('saving','מייבא תפריט...');
+  let done=0; const total=toAdd.length+toUpdate.length;
+  const norm = m => ({ name:m.name, category:m.category, kind:m.kind||'included', price:m.price||0,
+    noticeDays:m.noticeDays||0, grill:!!m.grill, notes:m.notes||'', active:true,
+    sort:INITIAL_MENU.indexOf(m),
+    bonWaves:m.bonWaves||[], bonUnit:m.bonUnit||'', bonMode:m.bonMode||'perGuest',
+    bonFactor:m.bonFactor||0, bonRound:m.bonRound||'round',
+    bonFactorAlt:m.bonFactorAlt||0, bonAltWhen:m.bonAltWhen||'' });
   try{
-    for(let i=0;i<toAdd.length;i++){
-      const m=toAdd[i];
-      const rec={ name:m.name, category:m.category, kind:m.kind||'included', price:m.price||0,
-        noticeDays:m.noticeDays||0, grill:!!m.grill, notes:m.notes||'', active:true,
-        sort:INITIAL_MENU.indexOf(m) };
+    for(const m of toAdd){
+      const rec=norm(m);
       const saved=await graphPost(CONFIG.lists.menu, menuItemToSp(rec));
       MENU.push({...rec,_spId:saved._spId});
-      setSyncing('saving',`מייבא... ${i+1}/${toAdd.length}`);
+      setSyncing('saving',`מייבא... ${++done}/${total}`);
+    }
+    for(const m of toUpdate){
+      const rec=norm(m); const cur=byName.get(m.name);
+      await graphPatch(CONFIG.lists.menu, cur._spId, menuBonFieldsToSp(rec));
+      Object.assign(cur, { bonWaves:rec.bonWaves, bonUnit:rec.bonUnit, bonMode:rec.bonMode,
+        bonFactor:rec.bonFactor, bonRound:rec.bonRound, bonFactorAlt:rec.bonFactorAlt, bonAltWhen:rec.bonAltWhen });
+      setSyncing('saving',`מעדכן... ${++done}/${total}`);
     }
     setSyncing('ok','מסונכרן');
     renderMenu(MENU);
-    alert(`יובאו ${toAdd.length} מנות לתפריט.`);
+    alert(`הושלם.\n${toAdd.length} מנות נוספו, ${toUpdate.length} מנות עודכנו.`);
   }catch(e){ setSyncing('error','שגיאה'); alert('שגיאה בייבוא: '+e.message); }
 }
 
@@ -1651,96 +1896,168 @@ function previewClientQuote(spId){
 }
 
 // ═══════════════════════════════════════════════════
-// FINAL MENU / KITCHEN TICKET
+// KITCHEN BON — מסך הבון למטבח
 // ═══════════════════════════════════════════════════
 function openFinalMenuModal(spId){
   const q = quotes.find(x=>x._spId===spId); if(!q) return;
   fmQuoteId = spId;
-  fmItems = (q.finalMenu||[]).map(x=>({...x}));
-  document.getElementById('fm-title').textContent = 'תפריט סופי — ' + q.customerName;
-  document.getElementById('fm-hero').innerHTML = `
-    <div class="qk-hero-item"><div class="l">לקוח</div><div class="v" style="font-size:15px">${q.customerName}</div></div>
-    <div class="qk-hero-item"><div class="l">תאריך אירוע</div><div class="v" style="font-size:15px">${q.eventDate||'—'}</div></div>
-    <div class="qk-hero-item"><div class="l">שעה</div><div class="v" style="font-size:15px">${q.eventTime||'—'}</div></div>
-    <div class="qk-hero-item"><div class="l">אורחים</div><div class="v">${q.guests}</div></div>`;
+  fmOverrides = {...(q.bonOverrides||{})};
+  fmExtras = (q.bonExtras||[]).map(e=>({...e}));
+  document.getElementById('fm-title').textContent = 'בון מטבח — ' + q.customerName;
+  document.getElementById('fm-guests').value = bonGuests(q);
+  document.getElementById('fm-vegans').value = q.vegans||0;
   document.getElementById('fm-kitchen-notes').value = q.kitchenNotes||'';
-  renderFinalMenuEditor();
+  renderBonExtras(); renderBon();
   document.getElementById('finalmenu-modal').classList.add('open');
 }
 
-function renderFinalMenuEditor(){
-  document.getElementById('fm-categories').innerHTML = CATEGORIES.map(cat=>{
-    const rows = fmItems.map((it,i)=>({it,i})).filter(x=>x.it.category===cat);
-    const rowsHtml = rows.map(({it,i})=>{
-      const opts = MENU.filter(m=>m.active && m.category===cat);
-      return `<div class="fm-row">
-        ${it.custom
-          ? `<input type="text" value="${it.name||''}" placeholder="שם מנה חופשי..." oninput="fmItems[${i}].name=this.value"/>`
-          : `<select onchange="fmSelectDish(${i},this.value)">
-              <option value="">-- בחר מנה --</option>
-              ${opts.map(m=>`<option value="${m.name}" ${m.name===it.name?'selected':''}>${m.name}</option>`).join('')}
-              <option value="__custom__">✍️ מנה חופשית...</option>
-            </select>`
-        }
-        <input type="number" value="${it.qty}" min="0" placeholder="כמות" oninput="fmItems[${i}].qty=parseInt(this.value)||0"/>
-        <input type="text" value="${it.note||''}" placeholder="הערה..." oninput="fmItems[${i}].note=this.value"/>
-        <button class="remove-btn" onclick="fmRemoveRow(${i})">✕</button>
-      </div>`;
-    }).join('');
-    return `<div class="fm-category">
-      <div class="fm-category-header"><span>${cat}</span><button class="btn btn-sm" onclick="fmAddRow('${cat}')">+ הוסף</button></div>
-      <div class="fm-category-body">${rowsHtml || `<div class="fm-empty">אין פריטים בקטגוריה זו</div>`}</div>
-    </div>`;
-  }).join('');
-}
-function fmAddRow(cat){ fmItems.push({category:cat,name:'',qty:1,note:'',custom:false}); renderFinalMenuEditor(); }
-function fmRemoveRow(i){ fmItems.splice(i,1); renderFinalMenuEditor(); }
-function fmSelectDish(i,val){
-  if(val==='__custom__'){ fmItems[i].custom=true; fmItems[i].name=''; }
-  else { fmItems[i].custom=false; fmItems[i].name=val; }
-  renderFinalMenuEditor();
+function fmWorkingQuote(){
+  const q = quotes.find(x=>x._spId===fmQuoteId);
+  return { ...q,
+    finalGuests: parseInt(document.getElementById('fm-guests').value)||0,
+    vegans: parseInt(document.getElementById('fm-vegans').value)||0,
+    kitchenNotes: document.getElementById('fm-kitchen-notes').value,
+    bonOverrides: fmOverrides, bonExtras: fmExtras };
 }
 
-async function saveFinalMenu(alsoPrint){
+function renderBon(){
+  const q = fmWorkingQuote();
+  const b = computeBon(q);
+  fmLastBon = b;
+
+  const alerts=[];
+  if(b.veg > b.n) alerts.push('<div class="alert-line warn">⚠️ מספר הצמחוניים גדול ממספר הסועדים.</div>');
+  if(!b.rows.length) alerts.push('<div class="alert-line warn">⚠️ אין פריטים לבון. ודאו שנבחרו מנות בהצעה, ושבניהול תפריט הוגדר לכל מנה פייר.</div>');
+  if(b.noticeList.length) alerts.push(`<div class="alert-line notice">⏱ דורש הודעה מוקדמת: ${b.noticeList.map(esc).join(', ')}</div>`);
+  document.getElementById('fm-alerts').innerHTML = alerts.join('');
+
+  document.getElementById('fm-bon').innerHTML = `
+    <div class="info-grid">
+      <div class="info-card"><div class="ic-label">סועדים</div><div class="ic-val">${b.n}</div></div>
+      <div class="info-card"><div class="ic-label">צמחוניים</div><div class="ic-val">${b.veg}</div></div>
+      <div class="info-card"><div class="ic-label">מסלול שתייה</div><div class="ic-val" style="font-size:15px">${esc(b.drinksLabel)}</div></div>
+      <div class="info-card"><div class="ic-label">מחיר לסועד</div><div class="ic-val">₪${Math.round(b.perGuestPrice)}</div></div>
+    </div>
+    ${b.byWave.map(g=>`
+      <div class="fm-category">
+        <div class="fm-category-header"><span>${g.wave}</span></div>
+        <div class="fm-category-body">${g.rows.map(r=>bonRowHtml(r)).join('')}</div>
+      </div>`).join('')}`;
+}
+
+function bonRowHtml(r){
+  const changed = r.qty !== r.auto;
+  return `<div class="bon-row ${changed?'edited':''}">
+    <span class="dish">${esc(r.unit)}${r.extra?' <span class="badge badge-gray">נוסף ידנית</span>':''}</span>
+    <div class="qty-control">
+      <span class="reset-btn ${changed?'':'hidden'}" onclick="resetBonQty('${r.id}')">איפוס</span>
+      <button class="qty-btn" onclick="adjustBonQty('${r.id}',-1)">−</button>
+      <span class="qty-val ${changed?'changed':''}">${r.qty}</span>
+      <button class="qty-btn" onclick="adjustBonQty('${r.id}',1)">+</button>
+    </div>
+  </div>`;
+}
+function adjustBonQty(id,delta){
+  const row = (fmLastBon.rows||[]).find(r=>r.id===id); if(!row) return;
+  fmOverrides[id] = Math.max(0, row.qty + delta);
+  renderBon();
+}
+function resetBonQty(id){ delete fmOverrides[id]; renderBon(); }
+
+function addBonExtra(){ fmExtras.push({unit:'',qty:1,wave:W3}); renderBonExtras(); renderBon(); }
+function renderBonExtras(){
+  document.getElementById('fm-extras').innerHTML = fmExtras.length ? fmExtras.map((e,i)=>`
+    <div class="fm-row">
+      <input type="text" value="${esc(e.unit||'')}" placeholder="שם המנה למטבח..." oninput="fmExtras[${i}].unit=this.value;renderBon()"/>
+      <input type="number" min="0" value="${e.qty}" oninput="fmExtras[${i}].qty=parseInt(this.value)||0;renderBon()"/>
+      <select onchange="fmExtras[${i}].wave=this.value;renderBon()">
+        ${WAVES.map(w=>`<option ${w===e.wave?'selected':''}>${w}</option>`).join('')}
+      </select>
+      <button class="remove-btn" onclick="fmExtras.splice(${i},1);renderBonExtras();renderBon()">✕</button>
+    </div>`).join('') : '<div class="fm-empty">אין שורות נוספות</div>';
+}
+
+async function saveBon(alsoPrint){
   const q = quotes.find(x=>x._spId===fmQuoteId); if(!q) return;
-  const items = fmItems.filter(i=>i.name);
-  const kitchenNotes = document.getElementById('fm-kitchen-notes').value;
+  const w = fmWorkingQuote();
+  const b = computeBon(w);
+  // תצלום קפוא של הבון, כדי שההדפסה תהיה שחזורית גם אם התפריט ישתנה
+  const snapshot = b.rows.map(r=>({wave:r.wave, name:r.unit, qty:r.qty}));
   setSyncing('saving','שומר...');
-  try {
-    await graphPatch(CONFIG.lists.quotes, fmQuoteId, { FinalMenuJson: JSON.stringify(items), KitchenNotes: kitchenNotes, FinalMenuConfirmed: true });
-    q.finalMenu = items; q.kitchenNotes = kitchenNotes; q.finalMenuConfirmed = true;
+  try{
+    await graphPatch(CONFIG.lists.quotes, fmQuoteId, {
+      FinalGuests:w.finalGuests||0, Vegans:w.vegans||0,
+      KitchenNotes:w.kitchenNotes||'',
+      BonOverridesJson:JSON.stringify(fmOverrides),
+      BonExtrasJson:JSON.stringify(fmExtras),
+      FinalMenuJson:JSON.stringify(snapshot),
+      FinalMenuConfirmed:true });
+    Object.assign(q, { finalGuests:w.finalGuests, vegans:w.vegans, kitchenNotes:w.kitchenNotes,
+      bonOverrides:{...fmOverrides}, bonExtras:fmExtras.map(e=>({...e})),
+      finalMenu:snapshot, finalMenuConfirmed:true });
     setSyncing('ok','מסונכרן');
     closeModal('finalmenu-modal');
     renderPage(currentPage);
-    if(alsoPrint) showKitchenPreview(q);
-  } catch(e){ setSyncing('error','שגיאה'); alert('שגיאה בשמירה: '+e.message); }
+    if(alsoPrint) showKitchenPreview(q, b);
+  }catch(e){ setSyncing('error','שגיאה'); alert('שגיאה בשמירה: '+e.message); }
 }
 
-function showKitchenPreview(q){
-  document.getElementById('preview-title').textContent = 'בון הכנה למטבח';
-  const cats = CATEGORIES.filter(cat=>(q.finalMenu||[]).some(i=>i.category===cat));
+function showKitchenPreview(q, bIn){
+  const b = bIn || computeBon(q);
+  const dateStr = q.eventDate ? new Date(q.eventDate+'T12:00:00').toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'}) : '';
+  document.getElementById('preview-title').textContent = 'בון מטבח';
   document.getElementById('preview-content').innerHTML = `
     <div class="qp-wrap">
-      <div class="qp-logo"><div class="qp-logo-icon">🍳</div><div class="qp-logo-text"><h2>בון הכנה למטבח</h2><p>כותלי המפגש</p></div></div>
-      <div class="qp-divider"></div>
-      <div class="qp-info-grid">
-        <div><span>לקוח: </span><strong>${q.customerName}</strong></div>
-        <div><span>סוג אירוע: </span><strong>${q.eventType||'—'}</strong></div>
+      <div class="bon-print-head">
+        <div class="bon-print-title">${esc(q.customerName)}</div>
+        <div class="bon-print-meta">בון מטבח · ${dateStr}${dateStr&&q.eventTime?' · ':''}${q.eventTime||''}${q.eventType?' · '+esc(q.eventType):''}</div>
       </div>
       <div class="qk-hero">
-        <div class="qk-hero-item"><div class="l">תאריך אירוע</div><div class="v" style="font-size:16px">${q.eventDate||'—'}</div></div>
-        <div class="qk-hero-item"><div class="l">שעה</div><div class="v" style="font-size:16px">${q.eventTime||'—'}</div></div>
-        <div class="qk-hero-item"><div class="l">מספר אורחים</div><div class="v">${q.guests}</div></div>
+        <div class="qk-hero-item"><div class="l">סועדים</div><div class="v">${b.n}</div></div>
+        <div class="qk-hero-item"><div class="l">צמחוניים</div><div class="v">${b.veg}</div></div>
+        <div class="qk-hero-item"><div class="l">מסלול שתייה</div><div class="v" style="font-size:15px">${esc(b.drinksLabel)}</div></div>
       </div>
-      ${cats.map(cat=>`
-        <div class="qk-cat-title">${cat}</div>
-        <table class="qp-table">
-          <thead><tr><th>מנה</th><th style="text-align:center">כמות</th><th>הערה</th></tr></thead>
-          <tbody>${q.finalMenu.filter(i=>i.category===cat).map(i=>`<tr><td>${i.name}</td><td style="text-align:center;font-weight:700">${i.qty}</td><td>${i.note||'—'}</td></tr>`).join('')}</tbody>
-        </table>`).join('') || '<div class="empty-state">טרם הוזנו פריטים לתפריט הסופי</div>'}
-      ${q.kitchenNotes?`<div class="qk-notes-box">⚠️ <strong>הערות למטבח:</strong> ${q.kitchenNotes}</div>`:''}
+      ${b.byWave.map(g=>`
+        <div class="qk-cat-title">${g.wave}</div>
+        <table class="bon-print-tbl">
+          <tbody>${g.rows.map(r=>`<tr><td>${esc(r.unit)}</td><td class="q">${r.qty}</td></tr>`).join('')}</tbody>
+        </table>`).join('') || '<div class="empty-state">אין פריטים בבון</div>'}
+      ${q.kitchenNotes?`<div class="qk-notes-box">⚠️ <strong>הערות למטבח:</strong> ${esc(q.kitchenNotes)}</div>`:''}
+      ${b.noticeList.length?`<div class="qk-notes-box" style="background:#e8f2f8;border-color:#9cc4dd;color:#1d4d6b">⏱ <strong>דורש הכנה מוקדמת:</strong> ${b.noticeList.map(esc).join(', ')}</div>`:''}
     </div>`;
   document.getElementById('preview-modal').classList.add('open');
+}
+
+// ── פלט טקסט להעתקה לוואטסאפ / וורד ──
+function bonAsText(q, b){
+  const dateStr = q.eventDate ? new Date(q.eventDate+'T12:00:00').toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'}) : '';
+  const sep = '─'.repeat(30);
+  const L = ['בון מטבח — ' + q.customerName];
+  if(dateStr || q.eventTime) L.push([dateStr, q.eventTime].filter(Boolean).join(' | '));
+  L.push(`סועדים: ${b.n}  |  צמחוניים: ${b.veg}  |  שתייה: ${b.drinksLabel}`);
+  L.push(sep);
+  b.byWave.forEach(g=>{
+    L.push(''); L.push(g.wave + ':');
+    g.rows.forEach(r=>L.push('  ' + r.unit + ': ' + r.qty));
+  });
+  if(q.kitchenNotes){ L.push(''); L.push(sep); L.push('הערות למטבח: ' + q.kitchenNotes); }
+  if(b.noticeList.length){ L.push('דורש הכנה מוקדמת: ' + b.noticeList.join(', ')); }
+  return L.join('\n');
+}
+async function copyBonText(){
+  const w = fmWorkingQuote();
+  const txt = bonAsText(w, computeBon(w));
+  try{
+    await navigator.clipboard.writeText(txt);
+    alert('✅ הבון הועתק. אפשר להדביק בוואטסאפ או בוורד.');
+  }catch(e){
+    // גיבוי לדפדפנים שחוסמים את הלוח
+    const ta=document.createElement('textarea');
+    ta.value=txt; ta.style.cssText='position:fixed;top:10%;right:5%;width:90%;height:70%;z-index:9999;font-family:monospace;direction:rtl';
+    document.body.appendChild(ta); ta.select();
+    alert('סמן את הטקסט שנפתח, העתק (Ctrl+C), ואז סגור.');
+    ta.addEventListener('blur',()=>ta.remove());
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -1791,6 +2108,12 @@ body { font-family:Arial,sans-serif; background:#fff; color:#241a14; direction:r
 .qk-cat-title { background:#af4b2e; color:#fff; padding:8px 14px; font-size:14px; font-weight:600; border-radius:6px 6px 0 0; margin-top:14px; }
 .qk-notes-box { margin-top:18px; background:#fff6e0; border:1px solid #e8c877; border-radius:6px; padding:12px 16px; font-size:13px; color:#6b4e00; }
 .empty-state { text-align:center; padding:20px; color:#a08f80; }
+.bon-print-head { text-align:center; border-bottom:2px solid #af4b2e; padding-bottom:10px; margin-bottom:12px; }
+.bon-print-title { font-size:26px; font-weight:700; }
+.bon-print-meta { font-size:12px; color:#6b5a4d; margin-top:3px; }
+.bon-print-tbl { width:100%; border-collapse:collapse; margin-bottom:6px; }
+.bon-print-tbl td { padding:8px 12px; border-bottom:1px solid #eee; font-size:16px; }
+.bon-print-tbl td.q { text-align:left; font-size:22px; font-weight:700; width:80px; }
 </style>
 </head>
 <body>${content}</body>
@@ -1837,6 +2160,23 @@ async function saveCustomer(){
 // ═══════════════════════════════════════════════════
 // MENU ITEMS
 // ═══════════════════════════════════════════════════
+function renderWaveChecks(selected){
+  document.getElementById('mm-waves').innerHTML = WAVES.map((w,i)=>
+    `<label class="chk" style="margin-bottom:4px"><input type="checkbox" class="mm-wave" value="${w}" ${selected.includes(w)?'checked':''}/> ${w}</label>`).join('');
+}
+function readWaveChecks(){
+  return [...document.querySelectorAll('#mm-waves .mm-wave:checked')].map(c=>c.value);
+}
+function onBonModeChange(){
+  const mode=document.getElementById('mm-bonmode').value;
+  document.getElementById('mm-factor-wrap').style.display = (mode==='perGuest'||mode==='fixed') ? 'block' : 'none';
+  document.getElementById('mm-factor-label').textContent = mode==='fixed' ? 'כמות קבועה' : 'מקדם לסועד (למשל 0.4)';
+}
+function populateAltWhen(cur){
+  const sel=document.getElementById('mm-bonaltwhen');
+  sel.innerHTML='<option value="">— ללא —</option>'+MENU.map(m=>`<option ${m.name===cur?'selected':''}>${esc(m.name)}</option>`).join('');
+  if(cur && !MENU.some(m=>m.name===cur)) sel.insertAdjacentHTML('beforeend',`<option selected>${esc(cur)}</option>`);
+}
 function onKindChange(){
   const k=document.getElementById('mm-kind').value;
   const lbl=document.getElementById('mm-price-label');
@@ -1849,7 +2189,10 @@ function openMenuItemModal(){
   document.getElementById('mm-kind').value='included'; document.getElementById('mm-price').value=0;
   document.getElementById('mm-notice').value=0; document.getElementById('mm-grill').checked=false;
   document.getElementById('mm-notes').value=''; document.getElementById('mm-active').checked=true;
-  onKindChange();
+  document.getElementById('mm-bonunit').value=''; document.getElementById('mm-bonmode').value='perGuest';
+  document.getElementById('mm-bonfactor').value=0; document.getElementById('mm-bonround').value='round';
+  document.getElementById('mm-bonfactoralt').value=0;
+  renderWaveChecks([]); populateAltWhen(''); onKindChange(); onBonModeChange();
   document.getElementById('menuitem-modal').classList.add('open');
 }
 function editMenuItem(spId){
@@ -1861,7 +2204,12 @@ function editMenuItem(spId){
   document.getElementById('mm-notice').value=m.noticeDays||0;
   document.getElementById('mm-grill').checked=!!m.grill;
   document.getElementById('mm-notes').value=m.notes||''; document.getElementById('mm-active').checked=m.active;
-  onKindChange();
+  document.getElementById('mm-bonunit').value=m.bonUnit||'';
+  document.getElementById('mm-bonmode').value=m.bonMode||'perGuest';
+  document.getElementById('mm-bonfactor').value=m.bonFactor||0;
+  document.getElementById('mm-bonround').value=m.bonRound||'round';
+  document.getElementById('mm-bonfactoralt').value=m.bonFactorAlt||0;
+  renderWaveChecks(m.bonWaves||[]); populateAltWhen(m.bonAltWhen||''); onKindChange(); onBonModeChange();
   document.getElementById('menuitem-modal').classList.add('open');
 }
 async function saveMenuItem(){
@@ -1874,7 +2222,13 @@ async function saveMenuItem(){
     noticeDays:parseInt(document.getElementById('mm-notice').value)||0,
     grill:document.getElementById('mm-grill').checked,
     sort: existing?existing.sort:(MENU.length?Math.max(...MENU.map(m=>m.sort||0))+1:0),
-    notes:document.getElementById('mm-notes').value,active:document.getElementById('mm-active').checked};
+    notes:document.getElementById('mm-notes').value,active:document.getElementById('mm-active').checked,
+    bonWaves:readWaveChecks(), bonUnit:document.getElementById('mm-bonunit').value.trim(),
+    bonMode:document.getElementById('mm-bonmode').value,
+    bonFactor:parseFloat(document.getElementById('mm-bonfactor').value)||0,
+    bonRound:document.getElementById('mm-bonround').value,
+    bonFactorAlt:parseFloat(document.getElementById('mm-bonfactoralt').value)||0,
+    bonAltWhen:document.getElementById('mm-bonaltwhen').value};
   setSyncing('saving','שומר...');
   try{
     if(editingMenuId){
