@@ -291,6 +291,33 @@ label.chk input { width:auto; }
   td:before { content:attr(data-label); font-size:11px; color:var(--text2); font-weight:500; flex-shrink:0; margin-left:8px; }
   td[data-label=""] { display:none; }
   td[data-label="פעולות"]:before { display:none; }
+
+  /* ── התצוגה המקדימה (הצעה ללקוח / בון) נשארת טבלה אמיתית גם במובייל ──
+     בלי זה כלל ההפיכה-לכרטיסיות שלמעלה חל גם עליה, והתוכן נחתך. ── */
+  #preview-content table { display:table !important; width:100% !important; table-layout:fixed; }
+  #preview-content thead { display:table-header-group !important; }
+  #preview-content tbody { display:table-row-group !important; }
+  #preview-content tr { display:table-row !important; background:none !important; border:none !important;
+    margin:0 !important; padding:0 !important; border-radius:0 !important; }
+  #preview-content th, #preview-content td { display:table-cell !important; padding:6px 7px !important;
+    font-size:11.5px !important; word-wrap:break-word; overflow-wrap:anywhere; }
+  #preview-content td:before { content:none !important; display:none !important; margin:0 !important; }
+  #preview-content .bon-print-tbl td { font-size:14px !important; padding:7px 8px !important; }
+  #preview-content .bon-print-tbl td.q { font-size:19px !important; width:56px !important; }
+
+  /* ריווח וסידור פנימי של גוף ההצעה במסך צר */
+  .qp-wrap { padding:4px 2px !important; }
+  .qp-info-grid { grid-template-columns:1fr !important; gap:3px !important; font-size:12.5px; }
+  .qp-logo-icon { width:44px; height:44px; font-size:21px; }
+  .qp-logo-text h2 { font-size:18px; }
+  .qp-list li { font-size:12px; }
+  .qp-totals .final { font-size:16px; }
+  .bon-print-title { font-size:20px; }
+  .qk-hero { gap:8px; margin:12px 0 14px; }
+  .qk-hero-item { padding:8px 12px; min-width:88px; flex:1; }
+  .qk-hero-item .v { font-size:18px; }
+  .qk-cat-title { font-size:13px; padding:7px 10px; }
+  #preview-modal .modal-body { padding:12px 10px; }
   .modal { width:100% !important; max-width:100% !important; max-height:95vh; border-radius:var(--radius) var(--radius) 0 0; margin-top:auto; }
   .modal-overlay.open { align-items:flex-end; }
   .modal-header { padding:14px 16px; }
