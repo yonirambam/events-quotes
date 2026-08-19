@@ -275,6 +275,26 @@ label.chk input { width:auto; }
   .sync-indicator { display:none; }
   #topbar-action { padding:6px 12px; font-size:12px; }
   .content { padding:14px; }
+
+  /* ── מניעת הרחבת חלון התצוגה ──
+     אלמנט ברוחב קבוע שרחב מהמסך מנפח את גוף האפליקציה, כרום מרחיב בעקבותיו
+     את חלון התצוגה, וכל התוכן — כולל המודלים — נדחף הצידה ונחתך. ── */
+  html, body { max-width:100%; overflow-x:hidden; }
+  #app-screen, #app-screen > div, .main, .content, .page, .card, .table-wrap { min-width:0; max-width:100%; }
+  .sidebar { left:0; right:0; width:auto; }
+
+  /* סרגל הפעולות: חיפוש ובוררים נערמים לרוחב מלא במקום רוחב קבוע */
+  .actions-bar { flex-wrap:wrap; gap:8px; }
+  .actions-bar > * { min-width:0; }
+  .actions-bar .search-bar { width:100% !important; }
+  .actions-bar > select, .actions-bar > input { width:100% !important; }
+  .actions-bar > button { flex:1 1 auto; }
+
+  /* שורות בחירת התפריט ובון המטבח */
+  .menu-row { grid-template-columns:1fr 62px 66px; }
+  .menu-row-name { min-width:0; overflow-wrap:anywhere; }
+  .bon-row .dish { min-width:0; overflow-wrap:anywhere; }
+  .items-tbl, .items-tbl tbody, .items-tbl tr { min-width:0; max-width:100%; }
   .stats-grid { grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
   .stat-card { padding:12px 14px; }
   .stat-value { font-size:20px; }
